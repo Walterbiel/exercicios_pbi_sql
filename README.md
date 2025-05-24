@@ -27,25 +27,18 @@ Os exercícios estão divididos entre:
 # 🟩 **Exercícios Power BI - DAX**
 
 ### 1. Total de Vendas
-**Crie uma medida para calcular o total de vendas.**
 
 ```dax
 Total_Vendas = SUM('Vendas'[receita])
 ```
 
----
-
 ### 2. Preço Médio por Categoria
-**Crie uma medida que calcule o preço médio dos produtos.**
 
 ```dax
 Preco_Medio = AVERAGE('Vendas'[preco])
 ```
 
----
-
 ### 3. Estatísticas do Preço
-**Crie medidas para calcular: média, mediana, moda, desvio padrão e variância do preço.**
 
 ```dax
 Media_Preco = AVERAGE('Vendas'[preco])
@@ -55,30 +48,21 @@ DesvioPadrao_Preco = STDEV.P('Vendas'[preco])
 Variancia_Preco = VAR.P('Vendas'[preco])
 ```
 
----
-
 ### 4. Year-over-Year (YoY) de Vendas
-**Crie uma medida que calcule a variação percentual de vendas em relação ao mesmo período do ano anterior.**
 
 ```dax
 Vendas_Ano_Anterior = CALCULATE([Total_Vendas], SAMEPERIODLASTYEAR('Vendas'[data_pedido]))
 Variação_YoY = DIVIDE([Total_Vendas] - [Vendas_Ano_Anterior], [Vendas_Ano_Anterior])
 ```
 
----
-
 ### 5. Month-over-Month (MoM) de Vendas
-**Crie uma medida que calcule a variação percentual das vendas em relação ao mês anterior.**
 
 ```dax
 Vendas_Mes_Anterior = CALCULATE([Total_Vendas], PREVIOUSMONTH('Vendas'[data_pedido]))
 Variação_MoM = DIVIDE([Total_Vendas] - [Vendas_Mes_Anterior], [Vendas_Mes_Anterior])
 ```
 
----
-
 ### 6. Média Móvel de 3 Meses
-**Crie uma média móvel de vendas com uma janela de 3 meses.**
 
 ```dax
 Media_Movel_3M = 
@@ -88,10 +72,7 @@ Media_Movel_3M =
     )
 ```
 
----
-
 ### 7. Filtro de Vendas Altas
-**Crie uma medida para somar todas as vendas acima de R$ 500.**
 
 ```dax
 Vendas_Acima_500 = 
@@ -101,27 +82,18 @@ Vendas_Acima_500 =
     )
 ```
 
----
-
 ### 8. Top 5 Produtos por Receita
-**Crie uma tabela mostrando os 5 produtos com maior receita.**
 
-✅ Dica: Utilize visual `Tabela` ou `Matriz`, insira `Produto` e `[Total_Vendas]`.  
+✅ Crie uma Tabela ou Matriz com `Produto` e `Total_Vendas`.  
 ✅ Aplique `Filtro` de visual: **Top N** → `5` baseado em `[Total_Vendas]`.
 
----
-
 ### 9. Porcentagem do Total de Vendas por Categoria
-**Crie uma medida para calcular o percentual que cada categoria representa no total de vendas.**
 
 ```dax
 %_Categoria = DIVIDE([Total_Vendas], CALCULATE([Total_Vendas], ALL('Vendas'[categoria])))
 ```
 
----
-
 ### 10. Dias Úteis com Venda
-**Crie uma medida que calcule o número de dias com pelo menos uma venda.**
 
 ```dax
 Dias_Com_Venda = DISTINCTCOUNT('Vendas'[data_pedido])
@@ -132,7 +104,6 @@ Dias_Com_Venda = DISTINCTCOUNT('Vendas'[data_pedido])
 # 🟦 **Exercícios SQL**
 
 ### 1. Total de Vendas e Preço Médio por Categoria
-**Liste o total de vendas e o preço médio por categoria.**
 
 ```sql
 SELECT categoria,
@@ -142,4 +113,131 @@ FROM vendas
 GROUP BY categoria;
 ```
 
-... [Texto continua conforme o conteúdo completo] ...
+### 2. Mediana e Moda do Preço
+
+**Mediana:**
+
+```sql
+SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY preco) AS mediana_preco
+FROM vendas;
+```
+
+**Moda:**
+
+```sql
+SELECT preco, COUNT(*) AS ocorrencias
+FROM vendas
+GROUP BY preco
+ORDER BY ocorrencias DESC
+LIMIT 1;
+```
+
+### 3. Desvio Padrão e Variância do Preço
+
+```sql
+SELECT STDDEV_POP(preco) AS desvio_padrao,
+       VAR_POP(preco) AS variancia
+FROM vendas;
+```
+
+### 4. Year-over-Year (YoY)
+
+```sql
+WITH vendas_ano AS (
+    SELECT EXTRACT(YEAR FROM data_pedido) AS ano,
+           SUM(receita) AS total_vendas
+    FROM vendas
+    GROUP BY ano
+)
+SELECT v1.ano, 
+       v1.total_vendas,
+       v2.total_vendas AS vendas_ano_anterior,
+       (v1.total_vendas - v2.total_vendas) / v2.total_vendas AS variacao_yoy
+FROM vendas_ano v1
+LEFT JOIN vendas_ano v2 ON v1.ano = v2.ano + 1;
+```
+
+### 5. Month-over-Month (MoM)
+
+```sql
+WITH vendas_mes AS (
+    SELECT DATE_TRUNC('month', data_pedido) AS mes,
+           SUM(receita) AS total_vendas
+    FROM vendas
+    GROUP BY mes
+)
+SELECT mes,
+       total_vendas,
+       LAG(total_vendas) OVER (ORDER BY mes) AS vendas_mes_anterior,
+       (total_vendas - LAG(total_vendas) OVER (ORDER BY mes)) / LAG(total_vendas) OVER (ORDER BY mes) AS variacao_mom
+FROM vendas_mes;
+```
+
+### 6. Média Móvel de 3 Meses
+
+```sql
+WITH vendas_mes AS (
+    SELECT DATE_TRUNC('month', data_pedido) AS mes,
+           SUM(receita) AS total_vendas
+    FROM vendas
+    GROUP BY mes
+)
+SELECT mes,
+       total_vendas,
+       AVG(total_vendas) OVER (
+           ORDER BY mes ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+       ) AS media_movel_3m
+FROM vendas_mes;
+```
+
+### 7. Criação de uma View de Resumo de Vendas
+
+```sql
+CREATE VIEW resumo_vendas AS
+SELECT produto,
+       categoria,
+       SUM(quantidade) AS total_vendido,
+       SUM(receita) AS receita_total
+FROM vendas
+GROUP BY produto, categoria;
+```
+
+### 8. Filtro de Vendas Acima de R$ 500
+
+```sql
+SELECT *
+FROM vendas
+WHERE receita > 500;
+```
+
+### 9. Top 10 Produtos Mais Vendidos
+
+```sql
+SELECT produto,
+       SUM(quantidade) AS total_vendido
+FROM vendas
+GROUP BY produto
+ORDER BY total_vendido DESC
+LIMIT 10;
+```
+
+### 10. Clientes com mais de 5 Compras
+
+```sql
+SELECT cliente_id,
+       COUNT(*) AS total_compras
+FROM vendas
+GROUP BY cliente_id
+HAVING COUNT(*) > 5;
+```
+
+---
+
+# ✅ **Conclusão**
+
+Este conjunto de exercícios aborda diversas funcionalidades fundamentais de **Power BI** e **SQL**, explorando estatísticas, comparativos temporais e funções avançadas como **Window Functions**, **CTE** e **Views**.
+
+---
+
+> **Autor:** Walter Gonzaga  
+> **Consultoria:** WGG Digital Solutions
