@@ -1,3 +1,4 @@
+Link base: 'https://www.kaggle.com/datasets/karkavelrajaj/amazon-sales-dataset?select=amazon.csv'
 
 # 📊 Exercícios de Power BI (DAX) e SQL com Base de Vendas
 
